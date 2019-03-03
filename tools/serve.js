@@ -10,6 +10,14 @@ var	portfinder = require('portfinder');
 var path = require('path');
 var logger, port;
 var log = console.log;
+var axios = require('axios');
+
+
+var bookDir = path.resolve(__dirname, '../reader/books/');
+if (!fs.existsSync(bookDir)) {
+    fs.mkdirSync(bookDir)
+}
+
 
 function start(_port) {
  if (!_port) {
@@ -42,6 +50,28 @@ function listen(port) {
   var server = http.createServer(app);
 
   app.use(allowCrossDomain);
+    app.get('/book', function (req, res) {
+        var url = req.query.q;
+        var fileName = url.substring(url.lastIndexOf('/') + 1);
+        var filePath = path.resolve(__dirname, '../reader/books/', fileName);
+        if (fs.existsSync(filePath)) {
+            console.log('exists');
+            res.redirect(`/?bookPath=/books/${fileName}`);
+        }else{
+            return axios.request({
+                responseType: 'arraybuffer',
+                url: url,
+                method: 'get',
+                headers: {
+                    'Content-Type': 'application/epub+zip',
+                },
+            }).then((result) => {
+                fs.writeFileSync(filePath, result.data);
+                res.redirect(`/?bookPath=/books/${fileName}`);
+            });
+        }
+
+    });
   app.use(staticServer);
 
   if(!logger) app.use(morgan('dev'))
